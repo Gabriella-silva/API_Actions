@@ -1,0 +1,238 @@
+import 'react-native-gesture-handler';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, Button, StyleSheet, ScrollView } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import axios from 'axios';
+import { Ionicons } from '@expo/vector-icons';
+
+const Tab = createBottomTabNavigator();
+
+// Página Home
+function Home() {
+  const [symbol, setSymbol] = useState('AAPL');
+  const [stockPrice, setStockPrice] = useState(null);
+  const [error, setError] = useState(null);
+
+  const fetchStockPrice = () => {
+    const apiKey = 'YOUR_API_KEY'; // Substitua com sua chave de API
+    axios
+      .get(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${apiKey}`)
+      .then((response) => {
+        const price = response.data['Global Quote']['05. price'];
+        setStockPrice(price);
+      })
+      .catch(() => {
+        setError('Erro ao carregar os dados da ação.');
+      });
+  };
+
+  useEffect(() => {
+    fetchStockPrice();
+  }, [symbol]);
+
+  return (
+    <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.title}>Preço Atual da Ação</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Digite o símbolo da ação (ex: AAPL)"
+        value={symbol}
+        onChangeText={setSymbol}
+        autoCapitalize="uppercase"
+      />
+      <Button title="Buscar Preço" onPress={fetchStockPrice} color="#007BFF" />
+      {stockPrice && <Text style={styles.result}>Preço: ${stockPrice}</Text>}
+      {error && <Text style={styles.error}>{error}</Text>}
+    </ScrollView>
+  );
+}
+
+// Página Histórico
+function History() {
+  const [symbol, setSymbol] = useState('AAPL');
+  const [historicalData, setHistoricalData] = useState([]);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const apiKey = 'YOUR_API_KEY'; // Substitua com sua chave de API
+    axios
+      .get(`https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${symbol}&apikey=${apiKey}`)
+      .then((response) => {
+        const data = response.data['Time Series (Daily)'];
+        const formattedData = Object.keys(data).map((date) => ({
+          date,
+          close: data[date]['4. close'],
+        }));
+        setHistoricalData(formattedData);
+      })
+      .catch(() => {
+        setError('Erro ao carregar o histórico de preços.');
+      });
+  }, [symbol]);
+
+  return (
+    <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.title}>Histórico de Preços</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Digite o símbolo da ação (ex: AAPL)"
+        value={symbol}
+        onChangeText={setSymbol}
+        autoCapitalize="uppercase"
+      />
+      {historicalData.length > 0 ? (
+        historicalData.map((data, index) => (
+          <View key={index} style={styles.card}>
+            <Text>{`${data.date}: $${data.close}`}</Text>
+          </View>
+        ))
+      ) : (
+        <Text>{error || 'Sem dados disponíveis.'}</Text>
+      )}
+    </ScrollView>
+  );
+}
+
+// Página Comparação
+function Comparison() {
+  const [symbol1, setSymbol1] = useState('AAPL');
+  const [symbol2, setSymbol2] = useState('GOOGL');
+  const [price1, setPrice1] = useState(null);
+  const [price2, setPrice2] = useState(null);
+  const [error, setError] = useState(null);
+
+  const fetchPrices = () => {
+    const apiKey = '9BGT6BU4ABQJST7J'; // Substitua com sua chave de API
+    axios
+      .get(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol1}&apikey=${apiKey}`)
+      .then((response) => {
+        setPrice1(response.data['Global Quote']['05. price']);
+      })
+      .catch(() => setError('Erro ao carregar o preço da ação 1.'));
+
+    axios
+      .get(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol2}&apikey=${apiKey}`)
+      .then((response) => {
+        setPrice2(response.data['Global Quote']['05. price']);
+      })
+      .catch(() => setError('Erro ao carregar o preço da ação 2.'));
+  };
+
+  useEffect(() => {
+    fetchPrices();
+  }, [symbol1, symbol2]);
+
+  return (
+    <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.title}>Comparação de Ações</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Digite o símbolo da ação 1"
+        value={symbol1}
+        onChangeText={setSymbol1}
+        autoCapitalize="uppercase"
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Digite o símbolo da ação 2"
+        value={symbol2}
+        onChangeText={setSymbol2}
+        autoCapitalize="uppercase"
+      />
+      <Button title="Comparar" onPress={fetchPrices} color="#007BFF" />
+      {price1 && price2 ? (
+        <Text style={styles.result}>
+          Preço de {symbol1}: ${price1} | Preço de {symbol2}: ${price2}
+        </Text>
+      ) : (
+        <Text>{error || 'Sem dados disponíveis.'}</Text>
+      )}
+    </ScrollView>
+  );
+}
+
+// Página Sobre
+function About() {
+  return (
+    <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.title}>Sobre a Aplicação</Text>
+      <Text>
+        Esta aplicação utiliza a API da Alpha Vantage para mostrar preços de ações, histórico de preços e comparar ações.
+      </Text>
+    </ScrollView>
+  );
+}
+
+export default function App() {
+  return (
+    <NavigationContainer>
+      <Tab.Navigator
+        screenOptions={({ route }) => ({
+          tabBarIcon: ({ color, size }) => {
+            let iconName;
+            if (route.name === 'Home') {
+              iconName = 'home';
+            } else if (route.name === 'Histórico') {
+              iconName = 'time';
+            } else if (route.name === 'Comparação') {
+              iconName = 'ios-analytics';
+            } else if (route.name === 'Sobre') {
+              iconName = 'information-circle';
+            }
+            return <Ionicons name={iconName} size={size} color={color} />;
+          },
+        })}
+      >
+        <Tab.Screen name="Home" component={Home} />
+        <Tab.Screen name="Histórico" component={History} />
+        <Tab.Screen name="Comparação" component={Comparison} />
+        <Tab.Screen name="Sobre" component={About} />
+      </Tab.Navigator>
+    </NavigationContainer>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: '#f5f5f5',
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 20,
+  },
+  input: {
+    width: '90%',
+    height: 50,
+    borderColor: '#007BFF',
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingLeft: 15,
+    marginBottom: 15,
+    backgroundColor: '#fff',
+  },
+  result: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginTop: 20,
+    color: '#007BFF',
+  },
+  error: {
+    color: 'red',
+    marginTop: 10,
+  },
+  card: {
+    backgroundColor: '#fff',
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 10,
+    width: '90%',
+    elevation: 3,
+  },
+});
